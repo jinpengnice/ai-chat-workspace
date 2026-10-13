@@ -10,6 +10,7 @@
 
 ### 本地环境
 - Java SDK: 21
+- Spring Boot: 4.1.1
 - Android Studio: 2026.2.1
 - Git:  2.39.5
 - Gradle: 未安装
