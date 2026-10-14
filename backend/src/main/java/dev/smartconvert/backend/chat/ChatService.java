@@ -4,19 +4,30 @@ import dev.smartconvert.backend.chat.dto.ChatResponse;
 import dev.smartconvert.backend.chat.dto.CreateChatRequest;
 import dev.smartconvert.backend.chat.dto.MessageResponse;
 import dev.smartconvert.backend.chat.dto.SendMessageRequest;
+import dev.smartconvert.backend.chat.repository.ChatMessageRepository;
+import dev.smartconvert.backend.chat.repository.ChatSessionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 @Service
+@Transactional
 public class ChatService {
-    private final ConcurrentMap<UUID, ChatSession> chats = new ConcurrentHashMap<>();
-    private final ConcurrentMap<UUID, ChatMessage> messages = new ConcurrentHashMap<>();
+
+    private final ChatSessionRepository chatSessionRepository;
+    private final ChatMessageRepository chatMessageRepository;
+
+    public ChatService(
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository
+    ) {
+        this.chatSessionRepository = chatSessionRepository;
+        this.chatMessageRepository = chatMessageRepository;
+    }
 
 
     public ChatResponse createChat(CreateChatRequest request) {
@@ -33,28 +44,26 @@ public class ChatService {
                 now,
                 now
         );
-        chats.put(chat.id(), chat);
+        ChatSession saveChat = chatSessionRepository.save(chat);
 
         return new ChatResponse(
-                chat.id(),
-                chat.title(),
-                chat.createdAt(),
-                chat.updatedAt()
+                saveChat.getId(),
+                saveChat.getTitle(),
+                saveChat.getCreatedAt(),
+                saveChat.getUpdatedAt()
         );
     }
 
+    @Transactional(readOnly = true)
     public ChatResponse getChat(UUID chatId) {
-        ChatSession chat = chats.get(chatId);
-
-        if (chat == null) {
-            throw new ChatNotFoundException(chatId);
-        }
+        ChatSession chat = chatSessionRepository.findById(chatId)
+                .orElseThrow(() -> new ChatNotFoundException(chatId));
 
         return new ChatResponse(
-                chat.id(),
-                chat.title(),
-                chat.createdAt(),
-                chat.updatedAt()
+                chat.getId(),
+                chat.getTitle(),
+                chat.getCreatedAt(),
+                chat.getUpdatedAt()
         );
     }
 
@@ -75,30 +84,32 @@ public class ChatService {
                 request.content().trim(),
                 now
         );
-        messages.put(message.id(), message);
+        ChatMessage saveMessage = chatMessageRepository.save(message);
 
         return new MessageResponse(
-                message.id(),
-                message.chatId(),
-                message.role(),
-                message.content(),
-                message.createdAt()
+                saveMessage.getId(),
+                saveMessage.getChatId(),
+                saveMessage.getRole(),
+                saveMessage.getContent(),
+                saveMessage.getCreatedAt()
         );
     }
 
+    @Transactional(readOnly = true)
     public List<MessageResponse> getMessages(UUID chatId) {
         // 会话不存在返回 404
         getChat(chatId);
 
-        return messages.values().stream()
-                .filter(message -> message.chatId().equals(chatId))
-                .sorted(Comparator.comparing(ChatMessage::createdAt))
+
+        return chatMessageRepository
+                .findByChatIdOrderByCreatedAtAsc(chatId)
+                .stream()
                 .map(messages -> new MessageResponse(
-                        messages.id(),
-                        messages.chatId(),
-                        messages.role(),
-                        messages.content(),
-                        messages.createdAt()
+                        messages.getId(),
+                        messages.getChatId(),
+                        messages.getRole(),
+                        messages.getContent(),
+                        messages.getCreatedAt()
                 ))
                 .toList();
     }

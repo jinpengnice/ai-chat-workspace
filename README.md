@@ -8,13 +8,16 @@
 - LLM: DeepSeek
 
 
-### 本地环境
+### 开发环境
 - Java SDK: 21
 - Spring Boot: 4.1.1
 - Android Studio: 2026.2.1
 - Git:  2.39.5
 - Gradle: 未安装
 - Meven: 未安装
+- Docker: 29.8.2
+- Docker compose: v5.6.0
+- PostgreSQL: 17.11
 
 
 ### PRD
