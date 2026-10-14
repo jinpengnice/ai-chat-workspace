@@ -52,6 +52,7 @@ public class ChatControllerTest {
                 .andExpect(jsonPath("$.title").value("New Chat"));
     }
 
+    @Test
     void shouldGetExistingChat() throws Exception {
         String response = mockMvc.perform(post(("/api/chats"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,9 +66,7 @@ public class ChatControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        com.fasterxml.jackson.databind.JsonNode json =
-                new com.fasterxml.jackson.databind.ObjectMapper()
-                        .readTree(response);
+        JsonNode json = new ObjectMapper().readTree(response);
 
 
         String chatId = json.get("id").asText();
@@ -176,5 +175,50 @@ public class ChatControllerTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void shouldReturnMessagesInCreatedAtOrder() throws Exception {
+        // 创建会话
+        String response = mockMvc.perform(post("/api/chats")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "title": "消息排序测试"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode json = new ObjectMapper().readTree(response);
+        String chatId = json.get("id").asText();
+
+        // 依次发送两条消息
+        mockMvc.perform(post("/api/chats/{chatId}/messages", chatId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "content": "第一条消息"
+                            }
+                            """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/chats/{chatId}/messages", chatId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "content": "第二条消息"
+                            }
+                            """))
+                .andExpect(status().isCreated());
+
+        // 验证返回顺序
+        mockMvc.perform(get("/api/chats/{chatId}/messages", chatId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].content").value("第一条消息"))
+                .andExpect(jsonPath("$[1].content").value("第二条消息"));
     }
 }
