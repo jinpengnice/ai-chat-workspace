@@ -14,6 +14,12 @@ public class ChatExceptionHandler {
         return new ErrorResponse(exception.getMessage());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handlerBadRequest(IllegalArgumentException exception) {
+        return new ErrorResponse(exception.getMessage());
+    }
+
     public record ErrorResponse(String message) {
 
     }
