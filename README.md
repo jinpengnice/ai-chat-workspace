@@ -42,7 +42,7 @@
 学习 Java 必需语法、Maven 或 Gradle、Spring Boot 工程结构、HTTP 和 JSON。
 具体任务：
 - 创建 GitHub 仓库。
-- 使用 Spring Initializr 创建后端。
+- 使用 IDEA Spring Boot 创建后端。
 - 实现 GET /api/health。
 - 编写第一个 JUnit 测试。
 - 使用 Postman 或 curl 验证接口。
