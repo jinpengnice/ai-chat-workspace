@@ -19,6 +19,11 @@ public class ChatController {
         this.chatService = chatService;
     }
 
+    @GetMapping
+    public List<ChatResponse> getChats() {
+        return chatService.getChats();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ChatResponse createChat(

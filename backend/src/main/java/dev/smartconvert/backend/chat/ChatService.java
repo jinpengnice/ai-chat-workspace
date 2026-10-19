@@ -113,4 +113,18 @@ public class ChatService {
                 ))
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<ChatResponse> getChats() {
+        return chatSessionRepository
+                .findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(chat -> new ChatResponse(
+                        chat.getId(),
+                        chat.getTitle(),
+                        chat.getCreatedAt(),
+                        chat.getUpdatedAt()
+                ))
+                .toList();
+    }
 }
