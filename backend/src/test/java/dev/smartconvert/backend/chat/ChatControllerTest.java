@@ -1,13 +1,13 @@
 package dev.smartconvert.backend.chat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.UUID;
 
@@ -66,7 +66,7 @@ public class ChatControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode json = new ObjectMapper().readTree(response);
+        JsonNode json = new JsonMapper().readTree(response);
 
 
         String chatId = json.get("id").asText();
@@ -99,7 +99,7 @@ public class ChatControllerTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        JsonNode json = new ObjectMapper().readTree(response);
+        JsonNode json = new JsonMapper().readTree(response);
 
         String chatId = json.get("id").asText();
 
@@ -130,7 +130,7 @@ public class ChatControllerTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        JsonNode json = new ObjectMapper().readTree(response);
+        JsonNode json = new JsonMapper().readTree(response);
 
         String chatId = json.get("id").asText();
 
@@ -163,7 +163,7 @@ public class ChatControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode json = new ObjectMapper().readTree(response);
+        JsonNode json = new JsonMapper().readTree(response);
         String chatId = json.get("id").asText();
 
         mockMvc.perform(post("/api/chats/{chatId}/messages", chatId)
@@ -192,7 +192,7 @@ public class ChatControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode json = new ObjectMapper().readTree(response);
+        JsonNode json = new JsonMapper().readTree(response);
         String chatId = json.get("id").asText();
 
         // 依次发送两条消息

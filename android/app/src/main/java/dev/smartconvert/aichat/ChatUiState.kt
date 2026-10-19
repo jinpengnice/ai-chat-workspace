@@ -4,7 +4,7 @@ import dev.smartconvert.aichat.model.ChatResponse
 
 data class ChatUiState(
     val input: String = "",
-    val messages: List<String> = emptyList(),
+    val messages: List<UiChatMessage> = emptyList(),
 
     val isCheckingHealth: Boolean = false,
     val healthMessage: String = "尚未检查后端连接",
@@ -20,4 +20,17 @@ data class ChatUiState(
 
     val isLoadingMessages: Boolean = false,
     val messageLoadMessage: String = ""
+)
+
+
+enum class ChatMessageRole {
+    USER,
+    ASSISTANT
+}
+
+data class UiChatMessage(
+    val id: String,
+    val role: ChatMessageRole,
+    val content: String,
+    val isStreaming: Boolean = false
 )

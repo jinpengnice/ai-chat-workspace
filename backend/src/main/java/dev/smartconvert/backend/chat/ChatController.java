@@ -5,7 +5,9 @@ import dev.smartconvert.backend.chat.dto.CreateChatRequest;
 import dev.smartconvert.backend.chat.dto.MessageResponse;
 import dev.smartconvert.backend.chat.dto.SendMessageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,6 +15,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/chats")
 public class ChatController {
+
     private final ChatService chatService;
 
     public ChatController(ChatService chatService) {
@@ -44,6 +47,18 @@ public class ChatController {
             @RequestBody SendMessageRequest request
     ) {
         return chatService.sendMessage(chatId, request);
+    }
+
+    @PostMapping(
+            value = "/{chatId}/messages/stream",
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE
+    )
+    public StreamingResponseBody streamMessage(
+            @PathVariable UUID chatId,
+            @RequestBody SendMessageRequest request
+    ) {
+        return outputStream ->
+                chatService.streamMessage(chatId, request, outputStream);
     }
 
     @GetMapping("/{chatId}/messages")

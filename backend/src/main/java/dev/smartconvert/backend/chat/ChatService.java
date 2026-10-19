@@ -10,6 +10,10 @@ import dev.smartconvert.backend.chat.repository.ChatSessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 
@@ -119,6 +123,79 @@ public class ChatService {
                 saveAssistantMessage.getContent(),
                 saveAssistantMessage.getCreatedAt()
         );
+    }
+
+    public void streamMessage(
+            UUID chatId,
+            SendMessageRequest request,
+            OutputStream outputStream
+    ) throws IOException {
+        getChat(chatId);
+
+        if (request.content() == null || request.content().isBlank()) {
+            throw new IllegalArgumentException("Message content must not be blank");
+        }
+
+        String userContent = request.content().trim();
+
+        ArrayList<DeepSeekClient.ChatMessage> promptMessage = new ArrayList<>(
+                chatMessageRepository.findByChatIdOrderByCreatedAtAsc(chatId)
+                        .stream()
+                        .map(message -> new DeepSeekClient.ChatMessage(
+                                message.getRole().name().toLowerCase(Locale.ROOT),
+                                message.getContent()
+                        ))
+                        .toList()
+        );
+        promptMessage.add(new DeepSeekClient.ChatMessage("user", userContent));
+
+        StringBuilder fullAnswer = new StringBuilder();
+
+        try {
+            deepSeekClient.streamChat(promptMessage, delta -> {
+                fullAnswer.append(delta);
+                try {
+                    writeSseData(outputStream, delta);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+
+        Instant now = Instant.now();
+        chatMessageRepository.save(new ChatMessage(
+                UUID.randomUUID(), chatId, ChatRole.USER, userContent, now
+        ));
+
+        ChatMessage assistantMessage = chatMessageRepository.save(new ChatMessage(
+                UUID.randomUUID(),
+                chatId,
+                ChatRole.ASSISTANT,
+                fullAnswer.toString(),
+                Instant.now()
+        ));
+
+        outputStream.write(
+                "event: done\ndata: [DONE]\n\n".getBytes(StandardCharsets.UTF_8)
+        );
+        outputStream.flush();
+    }
+
+    private void writeSseData(OutputStream outputStream, String text) throws IOException {
+        String normalized = text
+                .replace("\r\n", "\n")
+                .replace('\r', '\n');
+
+        for (String line : normalized.split("\n", -1)) {
+            outputStream.write(
+                    ("data: " + line + "\n").getBytes(StandardCharsets.UTF_8)
+            );
+        }
+
+        outputStream.write('\n');
+        outputStream.flush();
     }
 
     @Transactional(readOnly = true)

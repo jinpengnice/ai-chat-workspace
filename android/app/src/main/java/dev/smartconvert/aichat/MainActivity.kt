@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -23,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -62,6 +64,13 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val messageListState = rememberLazyListState()
+
+//    LaunchedEffect(uiState.messages.lastOrNull()) {
+//        if (uiState.messages.isNotEmpty()) {
+//            messageListState.scrollToItem(uiState.messages.lastIndex)
+//        }
+//    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -200,13 +209,17 @@ fun ChatScreen(
 
             // 消息列表
             LazyColumn(
+                state = messageListState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(uiState.messages) { message ->
-                    Text(message)
+                items(
+                    items = uiState.messages,
+                    key = { message -> message.id }
+                ) { message ->
+                    Text(message.content)
                 }
             }
         }

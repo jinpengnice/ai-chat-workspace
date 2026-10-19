@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
 class ChatViewModel : ViewModel() {
@@ -168,7 +169,14 @@ class ChatViewModel : ViewModel() {
                             isLoadingMessages = false,
                             messageLoadMessage = "已加载 ${messages.size} 条消息",
                             messages = messages.map { message ->
-                                "${message.role} : ${message.content}"
+                                UiChatMessage(
+                                    id = message.id,
+                                    role = when (message.role.uppercase()) {
+                                        "USER" -> ChatMessageRole.USER
+                                        else -> ChatMessageRole.ASSISTANT
+                                    },
+                                    content = message.content
+                                )
                             }
                         )
                     }
@@ -202,34 +210,74 @@ class ChatViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(isSendingMessage = true)
+            val assistantMessageId = UUID.randomUUID().toString()
+
+            val userMessage = UiChatMessage(
+                id = UUID.randomUUID().toString(),
+                role = ChatMessageRole.USER,
+                content = content
+            )
+
+            val assistantMessage = UiChatMessage(
+                id = assistantMessageId,
+                role = ChatMessageRole.ASSISTANT,
+                content = "",
+                isStreaming = true
+            )
+
+            _uiState.update { current ->
+                current.copy(
+                    messages = current.messages + listOf(userMessage, assistantMessage),
+                    isSendingMessage = true
+                )
             }
 
             try {
-                val message = repository.sendMessage(
-                    chatId = chatId,
-                    content = content
-                )
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        isSendingMessage = false,
-                        input = if (currentState.input.trim() == content) {
-                            ""
+                repository.streamMessage(chatId, content) { delta ->
+                    _uiState.update { current ->
+                        val lastMessage = current.messages.lastOrNull()
+
+                        if (
+                            current.activeChatId != chatId ||
+                            lastMessage?.id != assistantMessageId ||
+                            lastMessage.role != ChatMessageRole.ASSISTANT
+                        ) {
+                            current
                         } else {
-                            currentState.input
+                            current.copy(
+                                messages = current.messages.dropLast(1) + lastMessage.copy(
+                                    content = lastMessage.content + delta
+                                )
+                            )
+                        }
+                    }
+                }
+
+                _uiState.update { current ->
+                    current.copy(
+                        messages = current.messages.map { message ->
+                            if (message.id == assistantMessageId) {
+                                message.copy(isStreaming = false)
+                            } else {
+                                message
+                            }
                         },
-                        messages = currentState.messages + listOf(
-                            "USER: $content",
-                            "${message.role}: ${message.content}"
-                        )
+                        input = if (current.input.trim() == content) "" else current.input,
+                        isSendingMessage = false
                     )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
+                _uiState.update { current ->
+                    current.copy(
+                        messages = current.messages.map { message ->
+                            if (message.id == assistantMessageId) {
+                                message.copy(isStreaming = false)
+                            } else {
+                                message
+                            }
+                        },
                         isSendingMessage = false,
                         chatMessage = "发送失败：${e.message ?: "请检查后端服务"}"
                     )
@@ -265,7 +313,14 @@ class ChatViewModel : ViewModel() {
                         isLoadingMessages = false,
                         messageLoadMessage = "已从服务端加载 ${messages.size} 条消息",
                         messages = messages.map { message ->
-                            "${message.role}: ${message.content}"
+                            UiChatMessage(
+                                id = message.id,
+                                role = when (message.role.uppercase()) {
+                                    "USER" -> ChatMessageRole.USER
+                                    else -> ChatMessageRole.ASSISTANT
+                                },
+                                content = message.content
+                            )
                         }
                     )
                 }
