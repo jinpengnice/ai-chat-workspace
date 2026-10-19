@@ -219,7 +219,10 @@ class ChatViewModel : ViewModel() {
                         } else {
                             currentState.input
                         },
-                        messages = currentState.messages + "${message.role}: ${message.content}"
+                        messages = currentState.messages + listOf(
+                            "USER: $content",
+                            "${message.role}: ${message.content}"
+                        )
                     )
                 }
             } catch (e: CancellationException) {

@@ -1,5 +1,6 @@
 package dev.smartconvert.backend.chat;
 
+import dev.smartconvert.backend.DeepSeekClient;
 import dev.smartconvert.backend.chat.dto.ChatResponse;
 import dev.smartconvert.backend.chat.dto.CreateChatRequest;
 import dev.smartconvert.backend.chat.dto.MessageResponse;
@@ -10,9 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Transactional
@@ -20,13 +19,16 @@ public class ChatService {
 
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final DeepSeekClient deepSeekClient;
 
     public ChatService(
             ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository
+            ChatMessageRepository chatMessageRepository,
+            DeepSeekClient deepSeekClient
     ) {
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
+        this.deepSeekClient = deepSeekClient;
     }
 
 
@@ -75,23 +77,47 @@ public class ChatService {
             throw new IllegalArgumentException("Message content must not be blank");
         }
 
-        Instant now = Instant.now();
+        String userContent = request.content().trim();
 
-        ChatMessage message = new ChatMessage(
+        List<DeepSeekClient.ChatMessage> promptMessages = new ArrayList<>(
+                chatMessageRepository.findByChatIdOrderByCreatedAtAsc(chatId)
+                        .stream()
+                        .map(message -> new DeepSeekClient.ChatMessage(
+                                message.getRole().name().toLowerCase(Locale.ROOT),
+                                message.getContent()
+                        ))
+                        .toList()
+        );
+        promptMessages.add(new DeepSeekClient.ChatMessage("user", userContent));
+
+        String assistantContent = deepSeekClient.chat(promptMessages);
+
+        Instant userTime = Instant.now();
+        ChatMessage userMessage = new ChatMessage(
                 UUID.randomUUID(),
                 chatId,
                 ChatRole.USER,
-                request.content().trim(),
-                now
+                userContent,
+                userTime
         );
-        ChatMessage saveMessage = chatMessageRepository.save(message);
+        chatMessageRepository.save(userMessage);
+
+        Instant assistantTime = Instant.now();
+        ChatMessage assistantMessage = new ChatMessage(
+                UUID.randomUUID(),
+                chatId,
+                ChatRole.ASSISTANT,
+                assistantContent,
+                assistantTime
+        );
+        ChatMessage saveAssistantMessage = chatMessageRepository.save(assistantMessage);
 
         return new MessageResponse(
-                saveMessage.getId(),
-                saveMessage.getChatId(),
-                saveMessage.getRole(),
-                saveMessage.getContent(),
-                saveMessage.getCreatedAt()
+                saveAssistantMessage.getId(),
+                saveAssistantMessage.getChatId(),
+                saveAssistantMessage.getRole(),
+                saveAssistantMessage.getContent(),
+                saveAssistantMessage.getCreatedAt()
         );
     }
 
