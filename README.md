@@ -15,9 +15,9 @@
 
 ## 演示
 
-![Android 聊天界面](docs/demo/Screenshot_20261021_104850_dev.smartconvert.aichat.jpg)
+<img src="docs/demo/Screenshot_20261021_104850_dev.smartconvert.aichat.jpg" width="280" alt="Android 聊天界面截图">
 
-[查看演示视频](docs/demo/SVID_20261021_104905_1.mp4)
+<img src="docs/demo/20261021_104905_1.gif" width="280" alt="Android 聊天工作台演示 GIF">
 
 ## 技术栈
 
