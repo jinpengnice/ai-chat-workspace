@@ -1,118 +1,167 @@
-# ai-chat-workspace
+# AI Chat Workspace
 
+一个用于学习 Android 与 Spring Boot 全栈开发的 AI 聊天工作台。Android 客户端通过后端 API 管理会话和消息；后端将对话请求转发给大模型，并把生成内容以流式方式返回客户端。
 
-### 技术栈
-- 前端: Android: Compose ViewModel Retrofit + Okhttp
-- 后端： Java + SpringBoot
-- 数据库： PostgreSQL
-- LLM: DeepSeek
+> **项目状态：** 核心聊天流程已完成并由作者手动验证。启动步骤和演示环境以本地配置为准。
 
+## 功能
 
-### 开发环境
-- Java SDK: 21
-- Spring Boot: 4.1.1
-- Android Studio: 2026.2.1
-- Git:  2.39.5
-- Gradle: 未安装
-- Meven: 未安装
-- Docker: 29.8.2
-- Docker compose: v5.6.0
-- PostgreSQL: 17.11
+- 创建并查看聊天会话
+- 发送消息、加载历史消息
+- 通过 Server-Sent Events（SSE）接收大模型的流式回复
+- 将会话和消息保存到 PostgreSQL
+- 提供后端健康检查接口
+- 使用环境变量配置数据库凭据和大模型 API 信息
 
+## 演示
 
-### PRD
+![Android 聊天界面](docs/demo/Screenshot_20261021_104850_dev.smartconvert.aichat.jpg)
 
-#### MVP
-- 用户注册、登录和退出登录。
-- 创建新会话、查看历史会话、删除会话。
-- AI 多轮对话与流式输出。
-- 消息保存到 PostgreSQL，重启后仍能查询。
-- Markdown 消息渲染、复制回答、停止生成。
-- 用户之间的数据隔离。
-- 后端异常处理、测试、Docker 部署及 GitHub 开源。
+[查看演示视频](docs/demo/SVID_20261021_104905_1.mp4)
 
+## 技术栈
 
+| 部分 | 技术 |
+| --- | --- |
+| Android | Kotlin、Jetpack Compose、ViewModel、Kotlin Flow、Retrofit、OkHttp |
+| 后端 | Java 21、Spring Boot 4.1.1、Spring MVC、Spring Data JPA、Flyway |
+| 数据库 | PostgreSQL 17 |
+| 大模型 | DeepSeek API（OpenAI 风格的 Chat Completions 请求与 SSE 流式响应） |
+| 本地数据库运行 | Docker Compose |
 
-### 后续计划
+## 架构
 
-执行原则：每次只完成一个可验证的小任务。 你可以使用 AI 编程工具辅助生成代码，但要亲自运行、阅读、测试并解释代码。这样最终得到的不只是一个开源仓库，而是一套你真正掌握、可以在 Android 面试中深入讲解的工程经验。
+```text
+Android 客户端
+   │ REST / SSE
+   ▼
+Spring Boot 后端 ───────► 大模型 API
+   │
+   ▼
+PostgreSQL
+```
 
+会话与消息由后端持久化到 PostgreSQL。普通 REST 接口用于创建、查询会话和加载历史消息；发送消息时，Android 调用流式接口，后端读取模型的 SSE 数据并逐段转发给客户端。
 
-阶段 1：搭建后端骨架
-学习 Java 必需语法、Maven 或 Gradle、Spring Boot 工程结构、HTTP 和 JSON。
-具体任务：
-- 创建 GitHub 仓库。
-- 使用 IDEA Spring Boot 创建后端。
-- 实现 GET /api/health。
-- 编写第一个 JUnit 测试。
-- 使用 Postman 或 curl 验证接口。
-验收：后端可以启动，接口可访问，测试通过。
+## 项目结构
 
+```text
+.
+├── android/    # Android 客户端
+├── backend/    # Spring Boot API、模型调用与数据库迁移
+├── deploy/     # PostgreSQL Docker Compose 配置和启动脚本
+├── docs/       # 项目文档与演示素材
+└── README.md
+```
 
+## 本地运行
 
-第 4–6 天
+### 环境要求
 
-阶段 2：接入 AI 模型
-学习 Controller、Service、DTO、配置管理、异常处理。
-具体任务：
-- 选择一个支持流式输出的中文模型 API。
-- 将 API Key 放在环境变量中。
-- 创建模型服务接口和实现类。
-- 先实现普通聊天，再实现 SSE 流式响应。
-- 处理模型超时和 API 错误。
-验收：调用后端接口可以得到 AI 回答，并能逐段接收输出。
+- JDK 21
+- Android Studio（使用仓库自带的 Gradle Wrapper，无需单独安装 Gradle）
+- Docker 与 Docker Compose
+- 大模型 API 凭据（通过项目外部配置文件提供）
 
+Maven Wrapper 已包含在 `backend/` 中，无需单独安装 Maven。
 
+### 1. 配置外部环境变量文件
 
-第 7–9 天
+项目统一从仓库外的环境变量文件读取数据库和大模型配置：
 
-阶段 3：数据库与业务接口
-学习 PostgreSQL、SQL、JPA、实体关系、事务和 Flyway。
-具体任务：
-- 设计用户、会话、消息三张核心表。
-- 实现会话创建、列表查询和删除。
-- 实现消息历史分页查询。
-- 保存用户消息和模型回答。
-- 验证会话和消息的所属关系。
-验收：应用重启后历史记录仍存在，不同用户无法读取彼此的数据。
+```text
+../private-config/ai-chat-workspace.env
+```
 
+文件中提供以下变量：
 
+```dotenv
+POSTGRES_PASSWORD=<本机数据库密码>
+AI_BASE_URL=<大模型 API 基础地址>
+AI_API_KEY=<大模型 API Key>
+AI_MODEL=<模型名称>
+```
 
-第 10–14 天
+请在自己的机器上创建并填入实际值，不要将该文件或密钥提交到仓库。`deploy/up.sh` 会读取其中的数据库密码来启动 PostgreSQL；Spring Boot 运行配置需要加载同一个文件，以便应用读取数据库密码和大模型设置。
 
-阶段 4：Android 聊天客户端
-具体任务：
-- 使用 Jetpack Compose 实现聊天页面。
-- 使用 ViewModel + StateFlow 管理消息状态。
-- 使用 Repository 封装网络访问。
-- 实现 SSE 接收与增量更新。
-- 实现会话列表、历史加载、发送和停止生成。
-- 处理加载、空状态、错误和网络断开。
-验收：可以在模拟器或真机上完成一次完整的 AI 多轮对话。
+在 IntelliJ IDEA / Android Studio 的 Spring Boot Run Configuration 中，将该文件设置为环境变量文件（使用 IDE 支持的 env 文件功能或 EnvFile 插件），无需在运行配置里逐项复制变量。使用 IDE 运行配置启动 Spring Boot 即可。若从命令行启动，则需先让当前 shell 从该文件加载环境变量。
 
+### 2. 启动 PostgreSQL
 
+从项目根目录运行：
 
-第 15–18 天
+```bash
+./deploy/up.sh
+```
 
-阶段 5：安全与质量
-具体任务：
-- 实现注册、登录、密码哈希与身份认证。
-- 为受保护的 API 增加权限校验。
-- 统一异常响应和参数校验。
-- 编写 Service 单元测试及关键接口集成测试。
-- 验证重复请求、超时、取消生成等边界情况。
-验收：没有登录不能访问私有数据，关键业务逻辑有自动化测试。
+脚本会启动 PostgreSQL 容器并在本机的 `5432` 端口提供服务。后端使用 Flyway 自动执行数据库迁移。
 
+### 3. 启动后端
 
+从命令行启动时，确认当前 shell 已从上述外部环境变量文件加载配置，再运行：
 
-第 19–21 天
+```bash
+cd backend && ./mvnw spring-boot:run
+```
 
-阶段 6：开源与投递准备
-具体任务：
-- 使用 Docker Compose 部署后端和 PostgreSQL。
-- 编写 .env.example 和完整启动文档。
-- 添加 GitHub Actions 构建与测试流程。
-- 整理 API 文档、架构图和数据库 ER 图。
-- 录制演示视频，编写简历项目描述。
-- 准备项目设计、数据库和流式响应相关的面试问题。
-验收：项目可运行、可演示、可测试，其他开发者能按文档启动。
+后端默认连接本机 `localhost:5432` 上的 `ai_chat_workspace` 数据库，数据库名和用户名配置在 `backend/src/main/resources/application.properties` 中。
+
+#### 流式请求超时说明
+
+大模型生成首个 token 或连续生成内容可能需要较长时间。项目已将 Spring MVC 异步请求超时和 Android OkHttp 读取超时都配置为 **180 秒**，分别位于 `backend/src/main/resources/application.properties` 和 `android/app/src/main/java/dev/smartconvert/aichat/data/remote/RetrofitClient.kt`。此前遇到的 `AsyncRequestTimeoutException` / Android 发送失败问题通过延长两端超时处理。
+
+若部署环境中的反向代理、网关或模型服务自身有更短的超时限制，仍可能中断连接；遇到长时间没有任何流数据时，可进一步考虑 SSE 心跳，并检查整条链路上的超时设置。
+
+### 4. 配置并运行 Android 客户端
+
+运行 Android 客户端前，需要在 `android/app/src/main/java/dev/smartconvert/aichat/data/remote/RetrofitClient.kt` 中把 `BASE_URL` 改为当前 Android 设备或模拟器实际可访问的后端地址，并保留末尾的 `/`。例如：
+
+```kotlin
+private const val BASE_URL = "http://<后端主机地址>:8080/"
+```
+
+- Android 模拟器访问运行在开发电脑上的后端时，使用模拟器可访问的宿主机地址（常见 Android Emulator 地址为 `10.0.2.2`）。
+- 真机使用开发电脑在当前局域网内的 IP 地址；电脑和手机需处于可互通的网络。
+- `localhost` 指向 Android 设备本身，通常不能用来访问开发电脑上的后端。
+- 修改地址后再从 Android Studio 运行应用或执行构建命令；后端端口也需要允许设备访问。
+
+然后用 Android Studio 打开 `android/`，等待 Gradle 同步并运行应用；也可在 `android/` 目录执行：
+
+```bash
+./gradlew assembleDebug
+```
+
+## API 概览
+
+基础路径：`/api/chats`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/chats` | 获取会话列表 |
+| `POST` | `/api/chats` | 创建会话 |
+| `GET` | `/api/chats/{chatId}` | 获取单个会话 |
+| `GET` | `/api/chats/{chatId}/messages` | 获取会话消息 |
+| `POST` | `/api/chats/{chatId}/messages` | 普通方式发送消息 |
+| `POST` | `/api/chats/{chatId}/messages/stream` | 通过 SSE 流式发送消息和接收回复 |
+
+健康检查：`GET /actuator/health`
+
+## 自动化测试
+
+后端包含 Spring Boot 启动上下文、健康检查和聊天控制器相关测试，覆盖会话创建与查询、消息发送与查询、输入校验及不存在会话的错误响应。可在 `backend/` 目录运行：
+
+```bash
+./mvnw test
+```
+
+当前这些测试不等于对真实 Android 设备到大模型服务的端到端测试；流式响应和慢响应场景仍建议在目标运行环境中手动验证。
+
+## 开发环境记录
+
+- Java SDK：21
+- Spring Boot：4.1.1
+- Android Gradle Plugin：9.4.1
+- Kotlin：2.2.10
+- PostgreSQL 镜像：17
+- Android SDK：项目配置 `compileSdk 37`、`minSdk 26`
+- Android Studio：Rabbit 1 | 2026.2.1

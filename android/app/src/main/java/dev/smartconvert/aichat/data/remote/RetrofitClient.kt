@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val BASE_URL = "http://192.168.1.103:8080/"
+    private const val BASE_URL = "http://IP:8080/"
 
     private val okHttpClient = OkHttpClient.Builder()
         .readTimeout(180, TimeUnit.SECONDS)
